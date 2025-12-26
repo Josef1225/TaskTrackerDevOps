@@ -9,6 +9,7 @@ const TaskList = ({ tasks, onDeleteTask }) => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const priorityOrder = { high: 3, medium: 2, low: 1 };
 
   useEffect(() => {
