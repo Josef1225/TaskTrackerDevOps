@@ -1,6 +1,7 @@
 name: build-and-lint
 
-# triggers: define when this workflow should run and on push to these branches
+# triggers: define when this workflow 
+# should run and on push to these branches
 on:
   push:
     branches: [main, dev]
