@@ -60,7 +60,6 @@ function App() {
     fetchTasks();
   };
 
-  // let sangam = 'unused variable here';
 
   return (
     <div className="min-h-screen bg-gray-50">
