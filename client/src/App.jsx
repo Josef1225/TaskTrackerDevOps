@@ -4,19 +4,56 @@ import { useState, useEffect } from 'react';
 import TaskList from './components/TaskList';
 import AddTaskDialog from './components/AddTaskDialog';
 import LoadingSpinner from './components/LoadingSpinner';
+import SignInForm from './components/SignInForm';
+import SignUpForm from './components/SignupForm';
 import { taskService } from './services/taskService';
+import { userService } from './services/UserService';
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [showSignIn, setShowSignIn] = useState(true);
 
-  // Fetch tasks on component mount
+  // Load token from localStorage on mount
   useEffect(() => {
-    fetchTasks();
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+      setToken(savedToken);
+    }
   }, []);
 
+  // Fetch user info if token exists
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) return;
+      try {
+        userService.setToken(token); // attach token to userService
+        const response = await userService.getCurrentUser();
+        setUser(response.data);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+        setToken(null);
+        localStorage.removeItem('token');
+      }
+    };
+    fetchUser();
+  }, [token]);
+
+  // Attach token to taskService whenever it changes
+  useEffect(() => {
+    if (token) taskService.setToken(token);
+  }, [token]);
+
+  // Fetch tasks when user is logged in
+  useEffect(() => {
+    if (user) fetchTasks();
+  }, [user]);
+
+  // Task Functions
   const fetchTasks = async () => {
     try {
       setLoading(true);
@@ -25,7 +62,7 @@ function App() {
       setTasks(response.data);
     } catch (err) {
       setError('Failed to fetch tasks. Please try again.');
-      console.error('Error fetching tasks:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -34,85 +71,99 @@ function App() {
   const handleAddTask = async (taskData) => {
     try {
       const response = await taskService.createTask(taskData);
-      setTasks((prevTasks) => [response.data, ...prevTasks]);
+      setTasks((prev) => [response.data, ...prev]);
       setIsDialogOpen(false);
-      return { success: true };
     } catch (err) {
       console.error('Error creating task:', err);
-      return {
-        success: false,
-        error: err.message || 'Failed to create task',
-      };
     }
   };
 
   const handleDeleteTask = async (taskId) => {
     try {
       await taskService.deleteTask(taskId);
-      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
     } catch (err) {
-      setError('Failed to delete task. Please try again.');
       console.error('Error deleting task:', err);
     }
   };
 
-  const handleRetry = () => {
-    fetchTasks();
+  // User Functions
+  const handleSignIn = async (credentials) => {
+    try {
+      const response = await userService.signIn(credentials);
+      setUser(response.data.user);
+      setToken(response.data.token);
+      localStorage.setItem('token', response.data.token);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   };
 
+  const handleSignUp = async (userData) => {
+    try {
+      const response = await userService.signUp(userData);
+      setUser(response.data.user);
+      setToken(response.data.token);
+      localStorage.setItem('token', response.data.token);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
 
+  // Render login/signup if no user, else dashboard
+  if (!user) {
+    return showSignIn ? (
+      <SignInForm
+        onSignIn={handleSignIn}
+        switchToSignUp={() => setShowSignIn(false)}
+      />
+    ) : (
+      <SignUpForm
+        onSignUp={handleSignUp}
+        switchToSignIn={() => setShowSignIn(true)}
+      />
+    );
+  }
+
+  // Main dashboard
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Task Manager Edited</h1>
-              <p className="text-gray-600 mt-1">Simple task management for DevOps demo</p>
-            </div>
+        <div className="max-w-4xl mx-auto px-4 py-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Task Manager</h1>
+            <p className="text-gray-600 mt-1">Simple task management for DevOps demo</p>
+          </div>
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setIsDialogOpen(true)}
-              className="bg-black text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="bg-black text-white px-6 py-2 rounded-lg font-medium"
             >
               Add Task
+            </button>
+            <button
+              onClick={() => {
+                setUser(null);
+                setToken(null);
+                localStorage.removeItem('token');
+              }}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg"
+            >
+              Logout
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
           <LoadingSpinner />
         ) : error ? (
-          <div className="text-center py-12">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-              <div className="text-red-600 mb-4">
-                <svg
-                  className="w-12 h-12 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-red-800 mb-2">Error</h3>
-              <p className="text-red-700 mb-4">{error}</p>
-              <button
-                onClick={handleRetry}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
+          <div className="text-center py-12 text-red-700">{error}</div>
         ) : (
           <TaskList tasks={tasks} onDeleteTask={handleDeleteTask} />
         )}

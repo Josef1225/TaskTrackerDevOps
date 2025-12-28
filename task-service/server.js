@@ -3,27 +3,28 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const taskRoutes = require('./routes/tasks');
+const authMiddleware = require('./middleware/authMiddleware');
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/tasks', taskRoutes);
+// Protect task routes with authMiddleware
+app.use('/api/tasks', authMiddleware, taskRoutes);
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running!' });
 });
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack, next);
   res.status(500).json({ message: 'Something went wrong!' });
@@ -53,7 +54,7 @@ mongoose
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Changed again to - Shutting down gracefully...');
+  console.log('Shutting down gracefully...');
   await mongoose.connection.close();
   process.exit(0);
 });

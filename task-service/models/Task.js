@@ -25,11 +25,16 @@ const taskSchema = new mongoose.Schema({
   },
   dueDate: {
     type: Date,
-    default: null, // optional
+    default: null,
   },
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  user: { // <-- associate task with a user
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
   },
 });
 

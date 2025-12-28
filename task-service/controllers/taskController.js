@@ -1,9 +1,9 @@
 const Task = require('../models/Task');
 
-// Get all tasks
+// Get all tasks for the logged-in user
 const getAllTasks = async (req, res) => {
   try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
+    const tasks = await Task.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: tasks.length,
@@ -18,7 +18,7 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// Create a new task
+// Create a new task for the logged-in user
 const createTask = async (req, res) => {
   try {
     const { title, description, status, priority, dueDate } = req.body;
@@ -33,6 +33,7 @@ const createTask = async (req, res) => {
       status: status || 'pending',
       priority: priority || 'medium',
       dueDate: dueDate || null,
+      user: req.user.id, // use `id` from decoded token
     });
 
     res.status(201).json({ success: true, message: 'Task created successfully', data: task });
@@ -46,19 +47,17 @@ const createTask = async (req, res) => {
   }
 };
 
-
-
-// Delete a task
+// Delete a task (only if it belongs to the logged-in user)
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const task = await Task.findByIdAndDelete(id);
+    const task = await Task.findOneAndDelete({ _id: id, user: req.user.id });
 
     if (!task) {
       return res.status(404).json({
         success: false,
-        message: 'Task not found',
+        message: 'Task not found or not authorized',
       });
     }
 
