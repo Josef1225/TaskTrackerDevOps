@@ -25,35 +25,36 @@ const AddTaskDialog = ({ onClose, onSubmit }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  if (!formData.title.trim() || !formData.description.trim()) {
+    setError('Please fill in both title and description');
+    return;
+  }
 
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setError('Please fill in both title and description');
-      return;
+  setIsSubmitting(true);
+  setError(null);
+
+  try {
+    const result = await onSubmit({
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      status: formData.status,
+      priority: formData.priority,
+      dueDate: formData.dueDate || null,
+    });
+
+    if (!result?.success) {
+      setError(result?.message || 'Failed to create task');
+    } else {
+      onClose(); // close dialog on success
     }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const result = await onSubmit({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        status: formData.status,
-        priority: formData.priority,
-        dueDate: formData.dueDate || null,
-      });
-
-      if (!result.success) {
-        setError(result.error || 'Failed to create task');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('An unexpected error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  } catch (err) {
+    console.error(err);
+    setError(err.message || 'An unexpected error occurred');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {

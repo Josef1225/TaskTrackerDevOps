@@ -7,7 +7,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import SignInForm from './components/SignInForm';
 import SignUpForm from './components/SignupForm';
 import { taskService } from './services/taskService';
-import { userService } from './services/UserService';
+import { userService } from './services/userService';
 
 function App() {
   const [tasks, setTasks] = useState([]);
