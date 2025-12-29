@@ -79,4 +79,31 @@ const deleteTask = async (req, res) => {
   }
 };
 
-module.exports = { getAllTasks, createTask, deleteTask };
+// Update task status
+const updateTaskStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const { id } = req.params;
+
+    // Validate status
+    const validStatuses = ['pending', 'in-progress', 'done'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const task = await Task.findOneAndUpdate(
+      { _id: id, user: req.user.id },
+      { status },
+      { new: true }
+    );
+
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found or not authorized' });
+
+    res.status(200).json({ success: true, message: 'Task status updated', data: task });
+  } catch (error) {
+    console.error('Error updating task status:', error);
+    res.status(500).json({ success: false, message: 'Failed to update task status' });
+  }
+};
+
+module.exports = { getAllTasks, createTask, deleteTask, updateTaskStatus };

@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllTasks, createTask, deleteTask } = require('../controllers/taskController');
+const { getAllTasks, createTask, deleteTask, updateTaskStatus } = require('../controllers/taskController');
 const authMiddleware = require('../middleware/authMiddleware'); // ✔ import correctly
 
 const router = express.Router();
@@ -8,5 +8,6 @@ const router = express.Router();
 router.get('/', authMiddleware, getAllTasks);
 router.post('/', authMiddleware, createTask);
 router.delete('/:id', authMiddleware, deleteTask);
+router.patch('/:id/status', authMiddleware, updateTaskStatus);
 
 module.exports = router;

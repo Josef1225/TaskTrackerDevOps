@@ -1,22 +1,41 @@
-# Two services: backend API on 5000, frontend (nginx) on 80
 services:
-  backend:
-    build: ./server
-    container_name: backend
-    restart: always
-    env_file:
-      - ./server/.env        
-    ports:
-      - "5000:5000"
-
-  frontend:
-    build:
-      context: ./client
-      args:
-        VITE_API_URL: http://13.218.92.177:5000/api
-    container_name: frontend
+  client:
+    build: ./client
+    container_name: client
     restart: always
     ports:
       - "5173:5173"
     depends_on:
-      - backend
+      - task-service
+      - user-service
+
+  task-service:
+    build: ./task-service
+    container_name: task-service
+    restart: always
+    env_file:
+      - ./task-service/.env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - user-service
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    restart: always
+    env_file:
+      - ./user-service/.env
+    ports:
+      - "4000:4000"
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    restart: always
+    env_file:
+      - ./notification-service/.env
+    ports:
+      - "5001:5001"
+    depends_on:
+      - task-service

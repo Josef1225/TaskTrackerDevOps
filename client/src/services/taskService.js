@@ -61,6 +61,22 @@ class TaskService {
 
     return await response.json();
   }
+
+  // ✅ Make sure this is INSIDE the class
+  async updateTaskStatus(taskId, status) {
+    const response = await fetch(`${API_BASE_URL}/${taskId}/status`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
 }
 
 export const taskService = new TaskService();
