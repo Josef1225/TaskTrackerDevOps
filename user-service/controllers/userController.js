@@ -6,6 +6,28 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 };
 
+// @desc    Get all users (for notification service)
+// @route   GET /api/users
+// @access  Public (or add auth if needed)
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password');
+    
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+
 // @desc    Register new user
 // @route   POST /api/users/register
 // @access  Public
@@ -89,4 +111,4 @@ const getCurrentUser = async (req, res) => {
   });
 };
 
-module.exports = { registerUser, loginUser, getCurrentUser };
+module.exports = { registerUser, loginUser, getCurrentUser, getAllUsers };
