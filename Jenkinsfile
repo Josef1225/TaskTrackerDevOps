@@ -2,72 +2,74 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "youcefkhelaifia"
-        REGISTRY = "docker.io"
-        KUBE_NAMESPACE = "default"
+        AWS_REGION = "us-east-1"
+        CLUSTER_NAME = "my-cluster"
+        NAMESPACE = "default"  // Kubernetes namespace
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
-                checkout scm
+                // Checkout your GitHub repo
+                git branch: 'main', url: 'https://github.com/Josef1225/TaskTrackerDevOps.git'
             }
         }
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'Dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
+                // Use Jenkins credentials for Docker login
+                withCredentials([usernamePassword(credentialsId: 'Dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh '''
-                docker build -t $DOCKERHUB_USER/client ./client
-                docker build -t $DOCKERHUB_USER/user-service ./user-service
-                docker build -t $DOCKERHUB_USER/task-service ./task-service
-                docker build -t $DOCKERHUB_USER/notification-service ./notification-service
-                docker build -t $DOCKERHUB_USER/nginx-gateway ./nginx
-                '''
+                script {
+                    // Build images for each microservice
+                    sh 'docker build -t youcefkhelaifia/client ./client'
+                    sh 'docker build -t youcefkhelaifia/task-service ./task-service'
+                    sh 'docker build -t youcefkhelaifia/user-service ./user-service'
+                    sh 'docker build -t youcefkhelaifia/notification-service ./notification-service'
+                    sh 'docker build -t youcefkhelaifia/nginx-gateway ./nginx-gateway'
+                }
             }
         }
 
         stage('Push Docker Images') {
             steps {
-                sh '''
-                docker push $DOCKERHUB_USER/client
-                docker push $DOCKERHUB_USER/user-service
-                docker push $DOCKERHUB_USER/task-service
-                docker push $DOCKERHUB_USER/notification-service
-                docker push $DOCKERHUB_USER/nginx-gateway
-                '''
+                script {
+                    // Push images to Docker Hub
+                    sh 'docker push youcefkhelaifia/client'
+                    sh 'docker push youcefkhelaifia/task-service'
+                    sh 'docker push youcefkhelaifia/user-service'
+                    sh 'docker push youcefkhelaifia/notification-service'
+                    sh 'docker push youcefkhelaifia/nginx-gateway'
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh '''
-                kubectl apply -f k8s/
-                '''
+                script {
+                    // Apply Kubernetes manifests (make sure they exist in repo)
+                    sh 'kubectl apply -f k8s/client-deployment.yml'
+                    sh 'kubectl apply -f k8s/task-service-deployment.yml'
+                    sh 'kubectl apply -f k8s/user-service-deployment.yml'
+                    sh 'kubectl apply -f k8s/notification-service-deployment.yml'
+                    sh 'kubectl apply -f k8s/nginx-gateway-deployment.yml'
+                }
             }
         }
     }
 
     post {
         success {
-            echo " Deployment successful"
+            echo '✅ Deployment succeeded!'
         }
         failure {
-            echo " Deployment failed"
+            echo '❌ Deployment failed!'
         }
     }
 }
