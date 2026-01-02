@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:alpine  
+        image: youcefkhelaifia/nginx-gateway:latest 
         ports:
         - containerPort: 80
         volumeMounts:
