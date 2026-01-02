@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: nginx-gateway
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: nginx-gateway
@@ -14,13 +14,13 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:alpine  # ← CHANGED
+        image: youcefkhelaifia/nginx-gateway:latest 
         ports:
         - containerPort: 80
         volumeMounts:
         - name: nginx-config
-          mountPath: /etc/nginx/conf.d  # Mount as directory
+          mountPath: /etc/nginx/conf.d  
       volumes:
       - name: nginx-config
         configMap:
-          name: nginx-config  # ← NO 'items:' section!
+          name: nginx-config  

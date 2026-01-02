@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: notification-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: notification-service
@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: youcefkhelaifia/notification-service:dev-v2
+          image: youcefkhelaifia/notification-service:latest
           ports:
             - containerPort: 5001
           envFrom:

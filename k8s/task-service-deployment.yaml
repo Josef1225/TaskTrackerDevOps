@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: task-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: task-service
@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: task-service
-          image: youcefkhelaifia/task-service:dev-v2
+          image: youcefkhelaifia/task-service:latest
           ports:
             - containerPort: 5000
           env:
