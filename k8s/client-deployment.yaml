@@ -15,6 +15,7 @@ spec:
       containers:
         - name: client
           image: youcefkhelaifia/client:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5173
           envFrom:
