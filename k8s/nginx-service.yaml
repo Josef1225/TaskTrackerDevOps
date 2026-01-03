@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: nginx-gateway-service
 spec:
-  type: NodePort   # Use LoadBalancer if on AWS
+  type: NodePort   
   selector:
     app: nginx-gateway
   ports:

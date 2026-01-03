@@ -1,2 +1,16 @@
 .env
 node_modules/
+
+# Terraform
+terraform.tfvars
+*.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# AWS credentials
+*.pem
+*.key
+.env
+secrets/
