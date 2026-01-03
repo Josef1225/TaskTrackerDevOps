@@ -1,36 +1,23 @@
 data "aws_availability_zones" "available" {}
 
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
-  tags = { Name = "devops-vpc" }
+  cidr_block = var.vpc_cidr
+  tags       = { Name = "devops-vpc" }
 }
 
-# Public Subnets
 resource "aws_subnet" "public" {
-  count                   = 2
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, 0)
   map_public_ip_on_launch = true
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  tags = { Name = "devops-public-${count.index}" }
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  tags                    = { Name = "devops-public-0" }
 }
 
-# Private Subnets
-resource "aws_subnet" "private" {
-  count             = 2
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 10)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
-  tags = { Name = "devops-private-${count.index}" }
-}
-
-# Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "devops-igw" }
+  tags   = { Name = "devops-igw" }
 }
 
-# Public Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   route {
@@ -40,26 +27,32 @@ resource "aws_route_table" "public" {
   tags = { Name = "devops-public-rt" }
 }
 
-# Associate Public Subnets with Route Table
 resource "aws_route_table_association" "public_assoc" {
-  count          = 2
-  subnet_id      = aws_subnet.public[count.index].id
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
 
 module "eks" {
-  source          = "terraform-aws-modules/eks/aws"
-  cluster_name    = "academy-eks"
-  cluster_version = "1.24"
-  subnets         = aws_subnet.public[*].id
-  vpc_id          = aws_vpc.main.id
+  source  = "terraform-aws-modules/eks/aws"
+  version = "21.10.1"
 
-  node_groups = {
+  name       = var.eks_cluster_name   # <-- use "name" for this module version
+  version    = var.eks_version        # <-- use "version" for this module version
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = [aws_subnet.public.id]
+
+  # Managed Node Groups
+  managed_node_groups = {
     eks_nodes = {
-      desired_capacity = 2
-      max_capacity     = 3
-      min_capacity     = 1
-      instance_type    = "t3.medium"
+      desired_capacity = var.node_desired_capacity
+      max_capacity     = var.node_max_capacity
+      min_capacity     = var.node_min_capacity
+      instance_type    = var.node_instance_type
     }
+  }
+
+  tags = {
+    Project = "MiniProject"
+    Owner   = "Youcef"
   }
 }
