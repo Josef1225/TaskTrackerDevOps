@@ -8,9 +8,19 @@ output "master_private_ip" {
   value       = aws_instance.k8s_master.private_ip
 }
 
-output "vpc_id" {
-  description = "ID of the created VPC"
-  value       = aws_vpc.k8s_vpc.id
+output "ssh_user" {
+  description = "SSH username for the instance"
+  value       = "ec2-user"
+}
+
+output "kubeconfig_path" {
+  description = "Path to kubeconfig on the master node"
+  value       = "/home/ec2-user/.kube/config"
+}
+
+output "project_directory" {
+  description = "Directory where Jenkins should clone the project"
+  value       = "/home/ec2-user/project"
 }
 
 output "ssh_command" {
@@ -19,22 +29,21 @@ output "ssh_command" {
 }
 
 output "connection_info" {
-  description = "Connection information"
+  description = "Connection information for Jenkins"
   value = <<-EOT
   ===========================================
   Kubernetes Cluster Ready!
   
   Master Node Public IP: ${aws_instance.k8s_master.public_ip}
   
-  To connect via SSH:
+  SSH Command:
   ssh ec2-user@${aws_instance.k8s_master.public_ip}
   
-  Once connected, check Kubernetes:
-  kubectl get nodes
-  kubectl get pods --all-namespaces
+  For Jenkins:
+  - Kubeconfig: /home/ec2-user/.kube/config
+  - Project Directory: /home/ec2-user/project
+  - Clone your repo to: /home/ec2-user/project/k8s
   
-  Test application is running on:
-  http://${aws_instance.k8s_master.public_ip}:$(sudo kubectl get svc nginx -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "30000-32767")
   ===========================================
   EOT
 }

@@ -5,7 +5,7 @@ resource "aws_vpc" "k8s_vpc" {
   enable_dns_support   = true
 
   tags = {
-    Name = "k8s-learning-vpc"
+    Name = "k8s-vpc"
   }
 }
 
@@ -50,10 +50,10 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group
+# Security Group - Enhanced for real application
 resource "aws_security_group" "k8s_sg" {
   name        = "k8s-security-group"
-  description = "Allow SSH and Kubernetes ports"
+  description = "Allow required ports for Kubernetes and applications"
   vpc_id      = aws_vpc.k8s_vpc.id
 
   # SSH access
@@ -65,11 +65,38 @@ resource "aws_security_group" "k8s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTP for testing
+  # HTTP
   ingress {
     description = "HTTP"
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Kubernetes API
+  ingress {
+    description = "Kubernetes API"
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # NodePort range
+  ingress {
+    description = "NodePort Services"
+    from_port   = 30000
+    to_port     = 32767
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -109,10 +136,11 @@ resource "aws_instance" "k8s_master" {
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.k8s_sg.id]
-  key_name               = var.ssh_key_name  # Use existing key in AWS Academy
+  key_name               = var.ssh_key_name
+  associate_public_ip_address = true
 
   root_block_device {
-    volume_size = 10  # Smaller for testing
+    volume_size = 20  # Increased for real deployment
     volume_type = "gp3"
   }
 
@@ -120,55 +148,73 @@ resource "aws_instance" "k8s_master" {
     Name = "k8s-master"
   }
 
-  # Inline user data to install k3s
-  user_data = <<-EOF
-              #!/bin/bash
-              # Update system
-              sudo yum update -y
-              
-              # Install Docker
-              sudo yum install -y docker
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              sudo usermod -aG docker ec2-user
-              
-              # Install k3s (lightweight Kubernetes)
-              curl -sfL https://get.k3s.io | sh -
-              
-              # Wait for k3s to start
-              sleep 30
-              
-              # Configure kubectl for ec2-user
-              mkdir -p /home/ec2-user/.kube
-              sudo cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
-              sudo chown ec2-user:ec2-user /home/ec2-user/.kube/config
-              echo 'export KUBECONFIG=$HOME/.kube/config' >> /home/ec2-user/.bashrc
-              
-              # Install kubectl
-              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-              sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-              
-              # Create test deployment
-              sudo kubectl create deployment nginx --image=nginx:alpine
-              sudo kubectl expose deployment nginx --port=80 --type=NodePort
-              
-              echo "=== Kubernetes Setup Complete ==="
-              echo "Public IP: $(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
-              echo "To access: ssh ec2-user@$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
-              echo "Once connected, run: kubectl get pods"
-              EOF
-}
+user_data = <<-EOF
+#!/bin/bash
 
-# Optional: EC2 Instance - Kubernetes Worker
-resource "aws_instance" "k8s_worker" {
-  count         = var.worker_count
-  ami           = data.aws_ami.amazon_linux_2.id
-  instance_type = var.instance_type
-  subnet_id     = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.k8s_sg.id]
-  key_name      = var.ssh_key_name
+# ---------------------------
+# Install Docker and Git
+# ---------------------------
+yum install -y docker git
+systemctl start docker
+systemctl enable docker
 
-  tags = {
-    Name = "k8s-worker-${count.index + 1}"
-  }
+# Give ec2-user permission to use Docker
+usermod -aG docker ec2-user
+chmod 666 /var/run/docker.sock
+
+# ---------------------------
+# Install k3s (Rancher Kubernetes)
+# ---------------------------
+curl -sfL https://get.k3s.io | sh -
+
+# ---------------------------
+# Start k3s server using full path
+# ---------------------------
+/usr/local/bin/k3s server --docker &
+
+# Wait for k3s to initialize
+sleep 150
+
+# ---------------------------
+# Set up kubectl wrapper using full path
+# ---------------------------
+tee /usr/local/bin/kubectl << 'SCRIPT'
+#!/bin/bash
+/usr/local/bin/k3s kubectl "$@"
+SCRIPT
+
+chmod +x /usr/local/bin/kubectl
+
+# ---------------------------
+# Create symlink for k3s for root
+# ---------------------------
+ln -sf /usr/local/bin/k3s /usr/bin/k3s
+
+# ---------------------------
+# Set KUBECONFIG for ec2-user
+# ---------------------------
+mkdir -p /home/ec2-user/.kube
+cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
+chown -R ec2-user:ec2-user /home/ec2-user/.kube
+echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
+
+# ---------------------------
+# Create project directory
+# ---------------------------
+mkdir -p /home/ec2-user/project
+chown -R ec2-user:ec2-user /home/ec2-user/project
+
+# ---------------------------
+# Test if k3s is running
+# ---------------------------
+if /usr/local/bin/k3s kubectl get nodes >/dev/null 2>&1; then
+    echo "=== SUCCESS: k3s is running ==="
+    /usr/local/bin/k3s kubectl get nodes
+else
+    echo "=== WARNING: k3s may still be starting ==="
+    echo "Run manually: /usr/local/bin/k3s kubectl get nodes"
+fi
+
+echo "Setup complete"
+EOF
 }

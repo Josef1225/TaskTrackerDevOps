@@ -1,13 +1,13 @@
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.medium"  # Increased for real deployment
 }
 
 variable "worker_count" {
   description = "Number of worker nodes"
   type        = number
-  default     = 0  # Start with 0 workers, just master
+  default     = 0 # One worker for real deployment
 }
 
 variable "ssh_key_name" {
@@ -19,5 +19,5 @@ variable "ssh_key_name" {
 variable "public_key_path" {
   description = "Path to your public key file"
   type        = string
-  default     = ""  # Leave empty if using existing key
+  default     = ""
 }
