@@ -148,6 +148,7 @@ resource "aws_instance" "k8s_master" {
     Name = "k8s-master"
   }
 
+# Update your EC2 user_data in Terraform:
 user_data = <<-EOF
 #!/bin/bash
 set -ex
@@ -157,9 +158,8 @@ yum install -y docker git
 systemctl enable --now docker
 usermod -aG docker ec2-user
 
-# Install k3s
-curl -sfL https://get.k3s.io | sh -s - --docker
-sudo /usr/local/bin/k3s server --docker & sleep 20
+# Install k3s but DON'T start it
+curl -sfL https://get.k3s.io | sh -s - --docker --write-kubeconfig-mode 644
 
 mkdir -p /home/ec2-user/.kube
 sudo cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
@@ -167,8 +167,7 @@ sudo chown -R ec2-user:ec2-user /home/ec2-user/.kube
 sudo chmod 600 /home/ec2-user/.kube/config
 echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
 
-echo "Checking k3s status..."
-sudo /usr/local/bin/k3s kubectl get nodes
-echo " k3s is READY!"
+echo "k3s installed but not started. Jenkins will start it when needed."
 EOF
+
 }
