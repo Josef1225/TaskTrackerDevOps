@@ -130,7 +130,7 @@ data "aws_ami" "amazon_linux_2" {
   }
 }
 
-# EC2 Instance - Kubernetes Master with k3s
+# EC2 Instance - Kubernetes Master with k3s (Amazon Linux 2)
 resource "aws_instance" "k8s_master" {
   ami                    = data.aws_ami.amazon_linux_2.id
   instance_type          = var.instance_type
@@ -140,7 +140,7 @@ resource "aws_instance" "k8s_master" {
   associate_public_ip_address = true
 
   root_block_device {
-    volume_size = 20  # Increased for real deployment
+    volume_size = 20
     volume_type = "gp3"
   }
 
@@ -150,71 +150,25 @@ resource "aws_instance" "k8s_master" {
 
 user_data = <<-EOF
 #!/bin/bash
+set -ex
 
-# ---------------------------
-# Install Docker and Git
-# ---------------------------
+yum update -y
 yum install -y docker git
-systemctl start docker
-systemctl enable docker
-
-# Give ec2-user permission to use Docker
+systemctl enable --now docker
 usermod -aG docker ec2-user
-chmod 666 /var/run/docker.sock
 
-# ---------------------------
-# Install k3s (Rancher Kubernetes)
-# ---------------------------
-curl -sfL https://get.k3s.io | sh -
+# Install k3s
+curl -sfL https://get.k3s.io | sh -s - --docker
+sudo /usr/local/bin/k3s server --docker & sleep 20
 
-# ---------------------------
-# Start k3s server using full path
-# ---------------------------
-/usr/local/bin/k3s server --docker &
-
-# Wait for k3s to initialize
-sleep 150
-
-# ---------------------------
-# Set up kubectl wrapper using full path
-# ---------------------------
-tee /usr/local/bin/kubectl << 'SCRIPT'
-#!/bin/bash
-/usr/local/bin/k3s kubectl "$@"
-SCRIPT
-
-chmod +x /usr/local/bin/kubectl
-
-# ---------------------------
-# Create symlink for k3s for root
-# ---------------------------
-ln -sf /usr/local/bin/k3s /usr/bin/k3s
-
-# ---------------------------
-# Set KUBECONFIG for ec2-user
-# ---------------------------
 mkdir -p /home/ec2-user/.kube
-cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
-chown -R ec2-user:ec2-user /home/ec2-user/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
+sudo chown -R ec2-user:ec2-user /home/ec2-user/.kube
+sudo chmod 600 /home/ec2-user/.kube/config
 echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
 
-# ---------------------------
-# Create project directory
-# ---------------------------
-mkdir -p /home/ec2-user/project
-chown -R ec2-user:ec2-user /home/ec2-user/project
-
-# ---------------------------
-# Test if k3s is running
-# ---------------------------
-if /usr/local/bin/k3s kubectl get nodes >/dev/null 2>&1; then
-    echo "=== SUCCESS: k3s is running ==="
-    /usr/local/bin/k3s kubectl get nodes
-else
-    echo "=== WARNING: k3s may still be starting ==="
-    echo "Run manually: /usr/local/bin/k3s kubectl get nodes"
-fi
-
-echo "Setup complete"
+echo "Checking k3s status..."
+sudo /usr/local/bin/k3s kubectl get nodes
+echo " k3s is READY!"
 EOF
 }
