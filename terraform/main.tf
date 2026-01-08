@@ -174,9 +174,6 @@ echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
 
 # Create project directory
 mkdir -p /home/ec2-user/project/k8s
-
-sudo /usr/local/bin/k3s server --docker & sleep 10
-
 EOF
 }
 

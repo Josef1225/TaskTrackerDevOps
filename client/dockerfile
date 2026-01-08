@@ -1,7 +1,9 @@
-# Single stage, production-ready
 FROM node:20-alpine AS builder
 
-# NO environment variables at all - completely clean
+# Only need API_BASE, others can be derived
+ARG VITE_API_BASE
+ENV VITE_API_BASE=${VITE_API_BASE}
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
