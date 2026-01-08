@@ -92,7 +92,16 @@ resource "aws_security_group" "k8s_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # NodePort range
+  # Node Exporter Metrics - ADD THIS
+  ingress {
+    description = "Node Exporter Metrics"
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # NodePort range (Covers Grafana 30000 & Prometheus 30001)
   ingress {
     description = "NodePort Services"
     from_port   = 30000
