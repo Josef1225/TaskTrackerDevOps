@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  k3s-cluster.json: |
+    {
+      "title": "K3s Cluster Monitoring",
+      "version": 1,
+      "tags": ["k3s", "kubernetes"],
+      "style": "dark",
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]))",
+              "legendFormat": "CPU"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Memory Usage",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{container!=\"\"}) / sum(node_memory_MemTotal_bytes) * 100",
+              "legendFormat": "Memory"
+            }
+          ]
+        }
+      ]
+    }
+  node-exporter.json: |
+    {
+      "title": "Node Exporter",
+      "version": 1,
+      "tags": ["node", "exporter"],
+      "style": "dark",
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        }
+      ]
+    }
