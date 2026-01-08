@@ -148,26 +148,55 @@ resource "aws_instance" "k8s_master" {
     Name = "k8s-master"
   }
 
-# Update your EC2 user_data in Terraform:
 user_data = <<-EOF
 #!/bin/bash
 set -ex
 
+# Update and install Docker
 yum update -y
 yum install -y docker git
 systemctl enable --now docker
 usermod -aG docker ec2-user
 
-# Install k3s but DON'T start it
-curl -sfL https://get.k3s.io | sh -s - --docker --write-kubeconfig-mode 644
+# Install k3s using the official installer
+export INSTALL_K3S_EXEC="--docker"
+curl -sfL https://get.k3s.io | sh -
 
+# Wait 30 seconds for installation
+sleep 30
+
+# Setup kubectl config
 mkdir -p /home/ec2-user/.kube
 sudo cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
 sudo chown -R ec2-user:ec2-user /home/ec2-user/.kube
 sudo chmod 600 /home/ec2-user/.kube/config
 echo 'export KUBECONFIG=/home/ec2-user/.kube/config' >> /home/ec2-user/.bashrc
 
-echo "k3s installed but not started. Jenkins will start it when needed."
-EOF
+# Create project directory
+mkdir -p /home/ec2-user/project/k8s
 
+sudo /usr/local/bin/k3s server --docker & sleep 10
+
+EOF
+}
+
+# CloudWatch Dashboard for monitoring
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = var.cloudwatch_dashboard_name  # Using variable instead of hardcoded
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        properties = {
+          metrics = [
+            ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.k8s_master.id]
+          ]
+          period = 300
+          stat   = "Average"
+          region = "us-east-1"
+          title  = "EC2 CPU Usage"
+        }
+      }
+    ]
+  })
 }

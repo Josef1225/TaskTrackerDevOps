@@ -28,6 +28,11 @@ output "ssh_command" {
   value       = "ssh ec2-user@${aws_instance.k8s_master.public_ip}"
 }
 
+output "cloudwatch_dashboard_url" {
+  description = "URL to access CloudWatch dashboard"
+  value       = "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=${aws_cloudwatch_dashboard.main.dashboard_name}"
+}
+
 output "connection_info" {
   description = "Connection information for Jenkins"
   value = <<-EOT
@@ -43,6 +48,9 @@ output "connection_info" {
   - Kubeconfig: /home/ec2-user/.kube/config
   - Project Directory: /home/ec2-user/project
   - Clone your repo to: /home/ec2-user/project/k8s
+  
+  CloudWatch Dashboard:
+  https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=${aws_cloudwatch_dashboard.main.dashboard_name}
   
   ===========================================
   EOT
